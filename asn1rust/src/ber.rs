@@ -281,7 +281,9 @@ pub fn ber_decode_length(p_strm: &mut ByteStream, value: &mut i32, p_err_code: &
             }
         };
         // Overflow check (matches C: `ret > (INT_MAX - curByte) / 256` → FALSE).
-        if ret > (u32::MAX - b as u32) / 256 {
+        // The bound is INT_MAX, not u32::MAX: `value` is an i32 and a length in
+        // [0x8000_0000, 0xFFFF_FFFF] would otherwise be returned as negative.
+        if ret > (i32::MAX as u32 - b as u32) / 256 {
             *p_err_code = ErrorCode::BerLengthMismatch;
             return false;
         }
@@ -1465,3 +1467,7 @@ mod tests {
         assert!(ber_decode_two_zeroes(&mut strm, &mut err));
     }
 }
+
+#[cfg(test)]
+#[path = "ber_tests.rs"]
+mod ber_tests;

@@ -1652,10 +1652,18 @@ pub fn acn_dec_string_ascii_null_terminated(
             return false;
         }
         if decoded_char != null_character {
+            if (i as usize) >= str_val.len() {
+                return false;
+            }
             str_val[i as usize] = decoded_char;
             i += 1;
         } else {
-            str_val[i as usize] = 0;
+            // The C runtime assumes max + 1 bytes and always stores the
+            // terminator; generated Rust fixed-length strings are [u8; max],
+            // so a full-length string has no room for it and needs none.
+            if (i as usize) < str_val.len() {
+                str_val[i as usize] = 0;
+            }
             return true;
         }
     }
@@ -1688,6 +1696,9 @@ pub fn acn_dec_string_ascii_null_terminated_mult(
     }
     let mut i: Asn1SccSint = 0;
     while i < max && &null_character[..sz] != &tmp[..sz] {
+        if (i as usize) >= str_val.len() {
+            return false;
+        }
         str_val[i as usize] = tmp[0];
         i += 1;
         for j in 0..sz - 1 {
@@ -1699,7 +1710,10 @@ pub fn acn_dec_string_ascii_null_terminated_mult(
         }
         tmp[sz - 1] = b;
     }
-    str_val[i as usize] = 0;
+    // See acn_dec_string_ascii_null_terminated: no terminator for a full buffer
+    if (i as usize) < str_val.len() {
+        str_val[i as usize] = 0;
+    }
     &null_character[..sz] == &tmp[..sz]
 }
 
@@ -3498,3 +3512,7 @@ pub fn acn_patch_det_ia5string_fix_size(
         }
     }
 }
+
+#[cfg(test)]
+#[path = "acn_string_tests.rs"]
+mod acn_string_tests;
